@@ -623,3 +623,20 @@ The release workflow runs typecheck, build, and tests, then publishes to npm and
 ## License
 
 MIT
+## Zero-token local playground
+
+Watch a Markdown document while editing it in your usual editor:
+
+```bash
+npx answerlint@latest tui --watch ./docs/article.md
+# equivalent in version one
+npx answerlint@latest tui ./docs/article.md
+```
+
+“Zero-token” means the playground uses AnswerLint's deterministic audit rules: it does not call an LLM, require an API key, consume model tokens, or send the document, its path, scores, or recommendations over the network. Processing stays on your machine and the watched file is never modified. Supported inputs are one local `.md` or `.mdx` file.
+
+Saving the file triggers a debounced refresh (200 ms by default). Scores only advance after a successful audit, so a temporary or incomplete editor save leaves the last results visible as stale. Use `--debounce <ms>` to change the delay, `--no-color` to disable color, and `--json-debug` for content-free local diagnostic events.
+
+Keyboard shortcuts: `Tab`/`Shift+Tab` changes panel focus, arrow keys navigate checks, `Enter` expands evidence, `f` filters issues, `r` refreshes immediately, `?` opens help, and `q` or `Ctrl+C` exits.
+
+`answerlint audit` audits files, directories, URLs, or sitemaps and writes a persistent HTML/JSON/CSV report. `answerlint tui` is a watch-only, local terminal dashboard. Version one has no built-in editor, automatic rewriting/fixes, directory or URL dashboard, HTML editing, browser UI, cloud sync, or LLM-generated advice.

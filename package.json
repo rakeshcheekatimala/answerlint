@@ -1,6 +1,6 @@
 {
   "name": "answerlint",
-  "version": "1.1.2",
+  "version": "1.2.1",
   "description": "A CLI tool that audits web content for AEO and GEO scores",
   "repository": {
     "type": "git",
@@ -32,7 +32,7 @@
     "release:dry-run": "npx -p node@v24 -c \"semantic-release --dry-run --no-ci\"",
     "test": "npm run test:cli-smoke && npm run build:test && node --import tsx --test $(find tests -name '*.test.ts' -print)",
     "test:coverage": "npm run test:cli-smoke && npm run build:test && node ./scripts/run-test-coverage.mjs",
-    "test:cli-smoke": "npm run build && node dist/index.js overview && npm run dev -- overview",
+    "test:cli-smoke": "npm run build && node dist/index.js overview && node dist/index.js tui --help && npm run dev -- overview",
     "size:bundle": "node -e \"console.log(require('fs').statSync('dist/index.js').size + ' bytes')\"",
     "size:pack": "npm pack --dry-run"
   },

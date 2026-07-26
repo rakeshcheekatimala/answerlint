@@ -8,6 +8,7 @@ import { runAudit } from './commands/audit.js';
 import { runDiff } from './commands/diff.js';
 import { runLlmsGenerate, runLlmsLint } from './commands/llms.js';
 import { runOverview } from './commands/overview.js';
+import { runTui } from './commands/tui.js';
 import { DiffOutputFormat } from '../diff/types.js';
 import { AuditOptions, OutputFormat } from '../types/index.js';
 
@@ -99,6 +100,40 @@ program
     }
 
     await runAudit(options);
+  });
+
+program
+  .command('tui')
+  .description('Watch one local Markdown file in the zero-token terminal playground')
+  .argument('[file]', 'Local .md or .mdx file')
+  .option('--watch <file>', 'Local .md or .mdx file to watch')
+  .option('--debounce <ms>', 'Delay before auditing after a file change', (value) => Number(value), 200)
+  .option('--no-color', 'Disable terminal colors')
+  .option('--json-debug', 'Write content-free diagnostic events', false)
+  .action(async (file: string | undefined, opts: Record<string, unknown>) => {
+    const watched = opts.watch as string | undefined;
+    if (!watched && !file) {
+      console.error('Error: Provide a file with answerlint tui <file> or answerlint tui --watch <file>.');
+      process.exitCode = 3;
+      return;
+    }
+    if (watched && file) {
+      console.error('Error: Provide the file once, either positionally or with --watch.');
+      process.exitCode = 3;
+      return;
+    }
+    const debounce = opts.debounce as number;
+    if (!Number.isFinite(debounce) || debounce < 0) {
+      console.error('Error: --debounce must be a non-negative number of milliseconds.');
+      process.exitCode = 3;
+      return;
+    }
+    try {
+      await runTui(watched ?? file!, { debounce, color: opts.color !== false, jsonDebug: Boolean(opts.jsonDebug) });
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`);
+      process.exitCode = 3;
+    }
   });
 
 program

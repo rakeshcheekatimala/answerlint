@@ -1,5 +1,6 @@
 import { AuditResult, Report } from '../types/index.js';
 import { classifyDelta } from './classifyDelta.js';
+import { computeCitationReadiness } from '../scoring/citation-readiness.js';
 import {
   ChangedSignal,
   DiffCiResult,
@@ -131,6 +132,10 @@ function buildScoreDiffs(base: Report, head: Report): Record<string, ScoreDiff> 
 function metricScore(report: Report, metric: MetricDefinition): number | undefined {
   if (metric.scoreKey && hasNumericScore(report, metric.scoreKey)) {
     return getNumericScore(report, metric.scoreKey);
+  }
+
+  if (metric.key === 'citationReadiness') {
+    return computeCitationReadiness(report.audits);
   }
 
   if (!metric.auditIds) return undefined;
