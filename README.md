@@ -3,16 +3,56 @@
 [![npm version](https://img.shields.io/npm/v/answerlint.svg)](https://www.npmjs.com/package/answerlint)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
 
-`answerlint` is an open-source CLI for auditing whether web content is ready for answer engines, AI search, and citation-driven discovery.
+`answerlint` shows whether AI answer engines can understand, trust, and cite your
+content—and what to improve when they cannot.
 
-It helps teams answer three practical questions:
+![How AnswerLint turns content into clearer, more citable answers](assets/how-answerlint-works.png)
+
+## How It Helps
+
+```text
+Your content          AnswerLint checks           You improve
+URL / Markdown   →    clarity + trust + evidence  → direct answers
+folder / sitemap      12 deterministic checks      stronger sources
+                                                   clearer authorship
+```
+
+1. **Add content.** Start with one URL or Markdown file, or audit a folder or
+   sitemap when you are ready to scale.
+2. **Inspect clarity and trust.** AnswerLint checks direct-answer quality,
+   entities, readability, authorship, freshness, sources, structured data, and
+   citation readiness.
+3. **Fix what matters.** Each failed or warning check includes evidence,
+   priority, expected score impact, and a recommended change.
+4. **Edit and recheck.** Update the source yourself and run the audit again—or
+   use the local TUI to refresh automatically whenever a Markdown file is saved.
+
+> AnswerLint never rewrites your content silently. It explains the problem and
+> recommends a change; you keep editorial control.
+
+### Choose the shortest path
+
+| I want to… | Run |
+|---|---|
+| Improve one Markdown document while writing | `npx answerlint@latest tui --watch ./article.md` |
+| Check one published page | `npx answerlint@latest audit --url "https://example.com/page" --output html` |
+| Review a content library | `npx answerlint@latest audit --dir ./docs --output csv` |
+| Prevent a pull request regression | `npx answerlint@latest diff --base-report base.json --head-report current.json --fail-on-regression` |
+
+The scores help prioritize work. They do not guarantee rankings or citations.
+
+## What Teams Can Answer
+
+It helps teams answer four practical questions:
 
 - Is this page structured clearly enough for AI systems to summarize, trust, and cite?
 - How does this page compare with a competitor or reference page?
 - Did this pull request improve or weaken AI visibility before it ships?
 - Is the site publishing a clean, valid `llms.txt` roadmap for AI agents?
 
-The package reads pages, local files, folders, sitemaps, or existing audit reports, runs a deterministic AEO/GEO rubric, and produces reports with scores, evidence, and recommended fixes.
+The package reads pages, local files, folders, sitemaps, or existing audit
+reports, runs a deterministic AEO/GEO rubric, and produces reports with scores,
+evidence, and recommended fixes.
 
 ![HTML audit report - composite, AEO/GEO gauges, and per-check results](assets/report-hero.png)
 

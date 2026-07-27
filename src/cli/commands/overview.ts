@@ -9,6 +9,8 @@ const c = {
   dim: chalk.dim,
   bold: chalk.bold,
   white: chalk.white,
+  lime: chalk.hex('#ccff00'),
+  orange: chalk.hex('#ff5500'),
 };
 
 function stripAnsi(s: string): string {
@@ -54,6 +56,33 @@ export function runOverview(version: string): void {
     c.dim(
       '  Score pages for Answer Engine + Generative Engine optimization · HTML, JSON, CSV'
     )
+  );
+  console.log('');
+
+  console.log(c.bold.white('  How it works'));
+  console.log(
+    `  ${c.lime('① Add content')}  ${c.dim('──→')}  ${c.orange('② Inspect clarity + trust')}  ${c.dim('──→')}  ${c.lime('③ Fix and recheck')}`
+  );
+  console.log(
+    c.dim('  URL · Markdown · folder · sitemap     12 deterministic checks      you keep editorial control')
+  );
+  console.log('');
+
+  console.log(c.bold.white('  Start with your goal'));
+  console.log(
+    `  ${c.lime('Write clearly')}   ${c.white('answerlint tui --watch ./article.md')}`
+  );
+  console.log(
+    `  ${c.lime('Check a page')}     ${c.white('answerlint audit --url "https://example.com/page" --output html')}`
+  );
+  console.log(
+    `  ${c.lime('Review a library')} ${c.white('answerlint audit --dir ./docs --output csv')}`
+  );
+  console.log(
+    `  ${c.lime('Protect a PR')}      ${c.white('answerlint diff --base-report base.json --head-report current.json --fail-on-regression')}`
+  );
+  console.log(
+    c.dim('  AnswerLint recommends changes; it never rewrites source content automatically.')
   );
   console.log('');
 

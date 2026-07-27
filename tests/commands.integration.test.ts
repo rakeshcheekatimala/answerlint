@@ -23,6 +23,9 @@ test('overview command prints the capability dashboard', async () => {
   const output = logs.join('\n');
   assert.match(output, /answerlint/);
   assert.match(output, /automated checks/);
+  assert.match(output, /How it works/);
+  assert.match(output, /Write clearly/);
+  assert.match(output, /never rewrites source content automatically/);
 });
 
 test('runAudit writes JSON, CSV, and HTML reports successfully', async () => {
