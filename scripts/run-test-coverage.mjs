@@ -76,8 +76,8 @@ function collectTestFiles(dir) {
 }
 
 function parseCoverage(text) {
-  const start = text.indexOf('# start of coverage report');
-  const end = text.indexOf('# end of coverage report');
+  const start = text.indexOf('start of coverage report');
+  const end = text.indexOf('end of coverage report');
   if (start === -1 || end === -1 || end <= start) {
     return null;
   }
