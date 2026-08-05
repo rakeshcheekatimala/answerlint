@@ -45,15 +45,23 @@ runs:
           --output-path "${RUNNER_TEMP}/answerlint-diff.json" \
           --max-composite-drop "${MAX_COMPOSITE_DROP}"
         echo "diff_exit=$?" >> "${GITHUB_OUTPUT}"
+        node "${GITHUB_ACTION_PATH}/scripts/action-export-scores.mjs"
         exit 0
     - name: Publish PR score table and enforce thresholds
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        DIFF_REPORT: ${{ runner.temp }}/answerlint-diff.json
         MIN_COMPOSITE_SCORE: ${{ inputs.min-composite-score }}
         MIN_AEO_SCORE: ${{ inputs.min-aeo-score }}
         MIN_GEO_SCORE: ${{ inputs.min-geo-score }}
         DIFF_EXIT: ${{ steps.diff.outputs.diff_exit }}
+        REPORT_VALID: ${{ steps.diff.outputs.report_valid }}
+        DIFF_GATE_PASSED: ${{ steps.diff.outputs.diff_gate_passed }}
+        BASE_COMPOSITE: ${{ steps.diff.outputs.base_composite }}
+        BASE_AEO: ${{ steps.diff.outputs.base_aeo }}
+        BASE_GEO: ${{ steps.diff.outputs.base_geo }}
+        HEAD_COMPOSITE: ${{ steps.diff.outputs.head_composite }}
+        HEAD_AEO: ${{ steps.diff.outputs.head_aeo }}
+        HEAD_GEO: ${{ steps.diff.outputs.head_geo }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
       run: node "${GITHUB_ACTION_PATH}/scripts/action-comment.mjs"

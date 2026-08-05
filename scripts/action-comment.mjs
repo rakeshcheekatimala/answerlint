@@ -1,19 +1,17 @@
-import fs from 'node:fs';
-
 const marker = '<!-- answerlint-score-delta -->';
-const report = JSON.parse(fs.readFileSync(required('DIFF_REPORT'), 'utf8'));
 const floors = {
   composite: numberEnv('MIN_COMPOSITE_SCORE'),
   aeo: numberEnv('MIN_AEO_SCORE'),
   geo: numberEnv('MIN_GEO_SCORE'),
 };
 const scores = {
-  base: readScores(report.base?.scores, 'base'),
-  head: readScores(report.head?.scores, 'head'),
+  base: readScores('BASE'),
+  head: readScores('HEAD'),
 };
-const failures = report.ci?.passed === false
+const failures = process.env.DIFF_GATE_PASSED !== 'true'
   ? ['A configured score-delta gate failed. Review the workflow log for details.']
   : [];
+if (process.env.REPORT_VALID !== 'true') failures.unshift('The AnswerLint diff report could not be validated.');
 for (const [key, floor] of Object.entries(floors)) {
   const score = scores.head[key];
   if (score < floor) failures.push(`${key.toUpperCase()} score ${score} is below ${floor}.`);
@@ -76,12 +74,11 @@ function numberEnv(name) {
   return value;
 }
 
-function readScores(value, label) {
-  if (!value || typeof value !== 'object') throw new Error(`Missing ${label} scores in diff report.`);
+function readScores(prefix) {
   return {
-    composite: boundedScore(value.composite, `${label} composite`),
-    aeo: boundedScore(value.aeo, `${label} AEO`),
-    geo: boundedScore(value.geo, `${label} GEO`),
+    composite: boundedScore(required(`${prefix}_COMPOSITE`), `${prefix} composite`),
+    aeo: boundedScore(required(`${prefix}_AEO`), `${prefix} AEO`),
+    geo: boundedScore(required(`${prefix}_GEO`), `${prefix} GEO`),
   };
 }
 
