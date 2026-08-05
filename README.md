@@ -2,12 +2,35 @@
 
 [![npm version](https://img.shields.io/npm/v/answerlint.svg)](https://www.npmjs.com/package/answerlint)
 [![Node.js](https://img.shields.io/node/v/answerlint.svg)](https://www.npmjs.com/package/answerlint)
+[![Tests, coverage, and audit](https://img.shields.io/github/actions/workflow/status/rakeshcheekatimala/answerlint/ci.yml?branch=main&label=tests%20%7C%20coverage%20%7C%20audit)](https://github.com/rakeshcheekatimala/answerlint/actions/workflows/ci.yml)
 [![Snyk Security](https://img.shields.io/github/actions/workflow/status/rakeshcheekatimala/answerlint/snyk.yml?branch=main&label=Snyk%20Security)](https://github.com/rakeshcheekatimala/answerlint/actions/workflows/snyk.yml)
+[![CodeQL](https://img.shields.io/github/actions/workflow/status/rakeshcheekatimala/answerlint/codeql.yml?branch=main&label=CodeQL)](https://github.com/rakeshcheekatimala/answerlint/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rakeshcheekatimala/answerlint/badge)](https://scorecard.dev/viewer/?uri=github.com/rakeshcheekatimala/answerlint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/rakeshcheekatimala/answerlint/blob/main/LICENSE)
 
 `answerlint` shows whether AI answer engines can understand, trust, and cite your
 content—and what to improve when they cannot.
+
+## Why teams can trust this release
+
+AnswerLint is open source, published from a protected GitHub Actions release
+workflow, and checked on every change. You do not have to take a badge on trust:
+each badge links to the public evidence behind it.
+
+| Signal | What it means in plain English |
+|---|---|
+| npm version | Shows the version users actually receive from npm. |
+| Node.js | Shows the supported Node.js runtime declared by the package. |
+| Tests, coverage, and audit | Runs the test matrix, enforces at least 85% line coverage, checks package contents, and audits dependencies. |
+| Snyk Security | Scans dependencies and source code for high-severity security findings. |
+| CodeQL | GitHub analyzes the JavaScript and TypeScript for security vulnerabilities. |
+| OpenSSF Scorecard | Provides an independent, public assessment of repository security practices. |
+| MIT License | Confirms the permissions and conditions under which the library can be used. |
+
+Releases use npm Trusted Publishing with short-lived OpenID Connect credentials,
+so no long-lived npm publishing token is stored in the repository. npm also
+records provenance for the published package. These controls reduce supply-chain
+risk, but no automated scan can promise that software is completely defect-free.
 
 ![How AnswerLint turns content into clearer, more citable answers](assets/how-answerlint-works.png)
 
