@@ -1,0 +1,67 @@
+name: AnswerLint AEO/GEO Diff
+description: Comment structured AnswerLint score deltas on pull requests and enforce score floors.
+inputs:
+  base-report:
+    description: Path to the baseline AnswerLint JSON report.
+    required: true
+  head-report:
+    description: Path to the pull request AnswerLint JSON report.
+    required: true
+  github-token:
+    description: Token used to create or update the pull request comment.
+    required: true
+  min-composite-score:
+    description: Minimum permitted head composite score.
+    default: '70'
+  min-aeo-score:
+    description: Minimum permitted head AEO score.
+    default: '0'
+  min-geo-score:
+    description: Minimum permitted head GEO score.
+    default: '0'
+  max-composite-drop:
+    description: Maximum permitted composite score drop.
+    default: '0'
+  answerlint-version:
+    description: AnswerLint npm version used to calculate the diff.
+    default: '1.2.1'
+runs:
+  using: composite
+  steps:
+    - name: Calculate AnswerLint score delta
+      id: diff
+      shell: bash
+      env:
+        BASE_REPORT: ${{ inputs.base-report }}
+        HEAD_REPORT: ${{ inputs.head-report }}
+        MAX_COMPOSITE_DROP: ${{ inputs.max-composite-drop }}
+        ANSWERLINT_VERSION: ${{ inputs.answerlint-version }}
+      run: |
+        set +e
+        npx --yes "answerlint@${ANSWERLINT_VERSION}" diff \
+          --base-report "${BASE_REPORT}" \
+          --head-report "${HEAD_REPORT}" \
+          --output json \
+          --output-path "${RUNNER_TEMP}/answerlint-diff.json" \
+          --max-composite-drop "${MAX_COMPOSITE_DROP}"
+        echo "diff_exit=$?" >> "${GITHUB_OUTPUT}"
+        node "${GITHUB_ACTION_PATH}/scripts/action-export-scores.mjs"
+        exit 0
+    - name: Publish PR score table and enforce thresholds
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        MIN_COMPOSITE_SCORE: ${{ inputs.min-composite-score }}
+        MIN_AEO_SCORE: ${{ inputs.min-aeo-score }}
+        MIN_GEO_SCORE: ${{ inputs.min-geo-score }}
+        DIFF_EXIT: ${{ steps.diff.outputs.diff_exit }}
+        REPORT_VALID: ${{ steps.diff.outputs.report_valid }}
+        DIFF_GATE_PASSED: ${{ steps.diff.outputs.diff_gate_passed }}
+        BASE_COMPOSITE: ${{ steps.diff.outputs.base_composite }}
+        BASE_AEO: ${{ steps.diff.outputs.base_aeo }}
+        BASE_GEO: ${{ steps.diff.outputs.base_geo }}
+        HEAD_COMPOSITE: ${{ steps.diff.outputs.head_composite }}
+        HEAD_AEO: ${{ steps.diff.outputs.head_aeo }}
+        HEAD_GEO: ${{ steps.diff.outputs.head_geo }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: node "${GITHUB_ACTION_PATH}/scripts/action-comment.mjs"

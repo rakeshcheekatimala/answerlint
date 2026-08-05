@@ -16,6 +16,9 @@ export interface LlmsLintOptions {
   strict: boolean;
   ci: boolean;
   maxChars: number;
+  checkLinks?: boolean;
+  concurrency?: number;
+  timeoutMs?: number;
 }
 
 export type LlmsIssueSeverity = 'error' | 'warn';

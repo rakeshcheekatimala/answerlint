@@ -64,7 +64,7 @@ export function runOverview(version: string): void {
     `  ${c.lime('① Add content')}  ${c.dim('──→')}  ${c.orange('② Inspect clarity + trust')}  ${c.dim('──→')}  ${c.lime('③ Fix and recheck')}`
   );
   console.log(
-    c.dim('  URL · Markdown · folder · sitemap     12 deterministic checks      you keep editorial control')
+    c.dim('  URL · Markdown · folder · sitemap     14 built-in checks            you keep editorial control')
   );
   console.log('');
 
@@ -98,8 +98,8 @@ export function runOverview(version: string): void {
   const stat = (label: string, value: string, color: typeof chalk.green) =>
     line(` ${padVal(color(value), 26)}  ${c.dim(label)}`);
 
-  console.log(stat('automated checks', '12', c.green));
-  console.log(stat('report formats', 'html · json · csv', c.blue));
+  console.log(stat('automated checks', '14', c.green));
+  console.log(stat('report formats', 'html · json · csv · sarif', c.blue));
   console.log(stat('input modes', 'url · file · dir · sitemap', c.yellow));
   console.log(stat('AI roadmap files', 'llms.txt · llms-full.txt', c.green));
   console.log(stat('CI exit codes', '0 · 1 · 2 · 3', c.magenta));
@@ -149,6 +149,9 @@ export function runOverview(version: string): void {
       ` ${c.yellow('csv')}${c.dim('  one row per URL · dir / sitemap batches')}`
     )
   );
+  console.log(
+    line(` ${c.magenta('sarif')}${c.dim(' findings for code-scanning toolchains')}`)
+  );
   console.log(boxBot);
   console.log('');
 
@@ -170,7 +173,7 @@ export function runOverview(version: string): void {
   console.log(c.bold.white('  Configuration'));
   console.log(
     c.dim(
-      '  Optional `.answerlint.json` in project or home; override with `--config <path>`.'
+      '  Optional `.answerlintrc.json` (legacy `.answerlint.json` supported); override with `--config <path>`.'
     )
   );
   console.log(

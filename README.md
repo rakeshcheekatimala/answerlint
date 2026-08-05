@@ -11,12 +11,16 @@ content—and what to improve when they cannot.
 
 ![How AnswerLint turns content into clearer, more citable answers](assets/how-answerlint-works.png)
 
+### Priority feature tour
+
+![Animated walkthrough of AnswerLint priority features and commands](assets/answerlint-priority-features.gif)
+
 ## How It Helps
 
 ```text
 Your content          AnswerLint checks           You improve
 URL / Markdown   →    clarity + trust + evidence  → direct answers
-folder / sitemap      12 deterministic checks      stronger sources
+folder / sitemap      14 built-in checks           stronger sources
                                                    clearer authorship
 ```
 
@@ -41,6 +45,8 @@ folder / sitemap      12 deterministic checks      stronger sources
 | Check one published page | `npx answerlint@latest audit --url "https://example.com/page" --output html` |
 | Review a content library | `npx answerlint@latest audit --dir ./docs --output csv` |
 | Prevent a pull request regression | `npx answerlint@latest diff --base-report base.json --head-report current.json --fail-on-regression` |
+| Validate AI manifests and live links | `npx answerlint@latest lint-llms llms.txt --ci` |
+| Produce code-scanning output | `npx answerlint@latest audit --dir ./docs --output sarif` |
 
 The scores help prioritize work. They do not guarantee rankings or citations.
 
@@ -322,7 +328,7 @@ Example diff summary:
 
 ## What It Checks
 
-The current audit rubric contains 12 deterministic checks.
+The current audit rubric contains 14 built-in checks, plus declarative project rules.
 
 ### AEO
 
@@ -341,6 +347,8 @@ The current audit rubric contains 12 deterministic checks.
 - external citations
 - comparison content
 - citation likelihood
+- entity relationship density based on explicit Wikipedia/Wikidata nodes
+- outbound citation health (HTTP failures, redirects, and recognized authoritative domains)
 
 Diff reports also derive higher-level comparison signals such as citation readiness, schema quality, content clarity, entity coverage, evidence quality, author/date/source signals, answerability, and AI extractability.
 
@@ -353,7 +361,7 @@ The workflow is intentionally simple:
 3. Run deterministic AEO and GEO checks.
 4. Compute `aeo`, `geo`, and `composite` scores.
 5. Attach recommendations for failed or warning checks.
-6. Write a report in HTML, JSON, CSV, comparison, or diff format.
+6. Write a report in HTML, exhaustive batch JSON, CSV, SARIF, comparison, or diff format.
 
 Score bands:
 
@@ -504,24 +512,32 @@ answerlint llms lint <file>
   --strict
   --ci
   --max-chars <n>
+
+answerlint lint-llms [files...]
+  --no-check-links
+  --concurrency <n>
+  --timeout <ms>
+  --strict
+  --ci
 ```
 
 Current implementation notes:
 
 - `--compare` audits the target and competitor URLs side by side; it is only supported with `--url`.
 - `diff` currently compares existing JSON audit reports.
-- live URL diff, sitemap diff, and PR comment output are planned follow-ups.
+- `action.yml` consumes base/head JSON reports, updates a structured PR comment, and enforces score floors and drop limits.
 - `--probe` exists, but probe mode is not implemented yet.
 - `--depth` is accepted, but the current crawler does not use it yet.
-- `html` and `json` audit outputs currently write only the first report for folder and sitemap runs.
+- batch JSON contains every page; SARIF contains every non-passing finding for code-scanning ingestion.
 
 ## Configuration
 
 Optional config loading order:
 
 1. `--config <path>`
-2. `.answerlint.json` in the current project
-3. `.answerlint.json` in the home directory
+2. `.answerlintrc.json` in the current project
+3. legacy `.answerlint.json` in the current project
+4. `.answerlint.json` in the home directory
 
 Example:
 
@@ -539,17 +555,51 @@ Example:
   "ci": {
     "threshold": 70,
     "fail_on_drop": true
-  }
+  },
+  "rules": [
+    { "id": "brand-name", "type": "required-term", "value": "AnswerLint", "category": "aeo" },
+    { "id": "legacy-name", "type": "forbidden-term", "value": "Old Brand" },
+    { "id": "source-policy", "type": "required-link", "value": "doi.org" }
+  ]
 }
 ```
+
+Rule types are deliberately non-executable: `required-term`, `forbidden-term`, and
+`required-link`. This keeps repository configuration reviewable and safe in CI.
+
+## GitHub Action
+
+Generate baseline and pull-request JSON reports in earlier steps, then invoke the
+repository action. Pin production workflows to a release tag or full commit SHA.
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+
+steps:
+  - uses: actions/checkout@<full-commit-sha>
+  - uses: rakeshcheekatimala/answerlint@<release-tag-or-full-commit-sha>
+    with:
+      base-report: artifacts/base.json
+      head-report: artifacts/head.json
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+      min-composite-score: 70
+      min-aeo-score: 65
+      min-geo-score: 65
+      max-composite-drop: 0
+```
+
+The action updates one marker-based comment rather than creating a new comment on
+every run. It exits non-zero when a configured score floor or delta gate fails.
 
 ## Best Practices
 
 Start with one known page before running a folder or sitemap audit. It is easier to validate the rubric and review recommendations on content you understand well.
 
-Use `html` when a person will read the report. Use `json` or `csv` when another tool will consume it.
+Use `html` when a person will read the report. Use `json`, `csv`, or `sarif` when another tool will consume it.
 
-Use `csv` for real batch audit runs. It is the only audit format that currently emits every page in a folder or sitemap audit.
+Use `csv` or JSON for full batch audit runs. Tune large sitemaps with `--concurrency <n>`; the bounded worker pool prevents unbounded sockets.
 
 Use `audit --compare` when you want a live side-by-side benchmark against a competitor, reference page, or category leader.
 

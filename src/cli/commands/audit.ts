@@ -6,6 +6,7 @@ import {
   AuditOptions,
   AuditResult,
   AnswerlintConfig,
+  BatchReport,
   ComparisonInsight,
   ComparisonLeader,
   ComparisonReport,
@@ -16,12 +17,13 @@ import {
 } from '../../types/index.js';
 import { loadConfig } from '../../config/index.js';
 import { crawl } from '../../crawler/index.js';
-import { runAudits } from '../../audits/runner.js';
+import { runAudits, runNetworkAudits } from '../../audits/runner.js';
 import { computeScores, bandColor, bandLabel } from '../../scoring/index.js';
 import { generateRecommendations } from '../../recommendations/index.js';
 import { generateHtmlReport } from '../../reporters/html.js';
 import { generateJsonReport } from '../../reporters/json.js';
 import { generateCsvComparisonReport, generateCsvReport } from '../../reporters/csv.js';
+import { generateSarifReport } from '../../reporters/sarif.js';
 
 export async function runAudit(options: AuditOptions): Promise<void> {
   if (!validateCompareOptions(options)) return;
@@ -52,7 +54,7 @@ export async function runAudit(options: AuditOptions): Promise<void> {
     }
 
     // 3. Run audits + score + recommend for each page
-    const reports = auditPages(pages, config, spinner);
+    const reports = await auditPages(pages, config, spinner, options.concurrency ?? 4);
 
     // 4. Output reports
     if (reports.length === 0) {
@@ -81,7 +83,7 @@ export async function runAudit(options: AuditOptions): Promise<void> {
         process.exit(2);
       }
 
-      const competitorReports = auditPages(competitorPages, config, spinner);
+      const competitorReports = await auditPages(competitorPages, config, spinner, options.concurrency ?? 4);
       const competitorReport = competitorReports[0];
 
       if (!competitorReport) {
@@ -94,8 +96,13 @@ export async function runAudit(options: AuditOptions): Promise<void> {
 
     if (options.output === 'json') {
       const outPath = options.outputPath ?? './answerlint-report.json';
-      generateJsonReport(comparisonReport ?? firstReport, outPath);
+      generateJsonReport(comparisonReport ?? (reports.length > 1 ? buildBatchReport(reports) : firstReport), outPath);
       console.log(chalk.green(`\nJSON report saved to ${outPath}`));
+    } else if (options.output === 'sarif') {
+      if (comparisonReport) throw new Error('SARIF output does not support --compare.');
+      const outPath = options.outputPath ?? './answerlint-report.sarif';
+      generateSarifReport(reports, outPath);
+      console.log(chalk.green(`\nSARIF report saved to ${outPath}`));
     } else if (options.output === 'csv') {
       const outPath = options.outputPath ?? './answerlint-report.csv';
       if (comparisonReport) {
@@ -180,17 +187,18 @@ function validateCompareOptions(options: AuditOptions): boolean {
   return true;
 }
 
-function auditPages(
+async function auditPages(
   pages: PageContent[],
   config: AnswerlintConfig,
-  spinner: ReturnType<typeof ora>
-): Report[] {
+  spinner: ReturnType<typeof ora>,
+  concurrency: number
+): Promise<Report[]> {
   const reports: Report[] = [];
 
   for (const page of pages) {
     spinner.start(`Auditing ${page.url}…`);
 
-    const rawAudits = runAudits(page);
+    const rawAudits = [...runAudits(page, config), ...(await runNetworkAudits(page, concurrency))];
     const auditResults = generateRecommendations(rawAudits);
     const scores = computeScores(auditResults, config);
 
@@ -207,6 +215,24 @@ function auditPages(
   }
 
   return reports;
+}
+
+export function buildBatchReport(reports: Report[]): BatchReport {
+  if (reports.length === 0) throw new Error('Cannot build an empty batch report.');
+  const average = (key: 'composite' | 'aeo' | 'geo') =>
+    Math.round(reports.reduce((sum, report) => sum + report.scores[key], 0) / reports.length);
+  const minimum = reports.reduce((lowest, report) =>
+    report.scores.composite < lowest.scores.composite ? report : lowest);
+  return {
+    type: 'batch',
+    timestamp: new Date().toISOString(),
+    reports,
+    summary: {
+      pages: reports.length,
+      average: { composite: average('composite'), aeo: average('aeo'), geo: average('geo') },
+      minimum: { composite: minimum.scores.composite, url: minimum.url },
+    },
+  };
 }
 
 function buildComparisonReport(target: Report, competitor: Report): ComparisonReport {

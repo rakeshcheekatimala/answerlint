@@ -6,7 +6,18 @@ export type AuditStatus = 'pass' | 'fail' | 'warn';
 
 export type Priority = 'high' | 'medium' | 'low';
 
-export type OutputFormat = 'html' | 'json' | 'csv';
+export type OutputFormat = 'html' | 'json' | 'csv' | 'sarif';
+
+export type CustomRuleType = 'required-term' | 'forbidden-term' | 'required-link';
+
+export interface CustomRule {
+  id: string;
+  type: CustomRuleType;
+  value: string;
+  category?: AuditCategory;
+  caseSensitive?: boolean;
+  message?: string;
+}
 
 export interface Recommendation {
   priority: Priority;
@@ -112,7 +123,18 @@ export interface ComparisonReport {
   comparison: ComparisonSummary;
 }
 
-export type ReportOutput = Report | ComparisonReport;
+export interface BatchReport {
+  type: 'batch';
+  timestamp: string;
+  reports: Report[];
+  summary: {
+    pages: number;
+    average: { composite: number; aeo: number; geo: number };
+    minimum: { composite: number; url: string };
+  };
+}
+
+export type ReportOutput = Report | ComparisonReport | BatchReport;
 
 export interface ProbeResult {
   model: string;
@@ -141,6 +163,7 @@ export interface AnswerlintConfig {
     threshold: number;
     fail_on_drop: boolean;
   };
+  rules: CustomRule[];
 }
 
 export interface AuditOptions {
@@ -158,6 +181,7 @@ export interface AuditOptions {
   ignoreRobots: boolean;
   depth: number;
   rate: number;
+  concurrency?: number;
   config?: string;
 }
 
@@ -180,4 +204,6 @@ export const DEFAULT_WEIGHTS: Record<string, number> = {
   external_links: 1.0,
   comparison_content: 1.0,
   citation_likelihood: 1.3,
+  entity_relationship_density: 1.2,
+  outbound_citation_health: 1.2,
 };

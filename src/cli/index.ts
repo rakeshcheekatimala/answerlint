@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import '../polyfills/node-web.js';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { Command } from 'commander';
 import { runAudit } from './commands/audit.js';
@@ -29,7 +29,17 @@ program
   .description(
     'Lighthouse-inspired CLI tool that audits web content for AEO and GEO scores'
   )
-  .version(version);
+  .version(version)
+  .option('--watch <file>', 'Watch a local Markdown/MDX file in the interactive terminal UI')
+  .option('--debounce <ms>', 'Watch debounce in milliseconds', (value) => Number(value), 200)
+  .action(async (opts: Record<string, unknown>) => {
+    const watched = opts.watch as string | undefined;
+    if (!watched) {
+      program.help();
+      return;
+    }
+    await runTui(watched, { debounce: opts.debounce as number, color: true, jsonDebug: false });
+  });
 
 program
   .command('overview')
@@ -50,7 +60,7 @@ program
   .option('--dir <path>', 'Audit a directory of local files')
   .option('--sitemap <url>', 'Audit all URLs in a sitemap.xml')
   // Output
-  .option('--output <format>', 'Report format: html | json | csv (default: html)', 'html')
+  .option('--output <format>', 'Report format: html | json | csv | sarif (default: html)', 'html')
   .option('--output-path <path>', 'Save report to a specific path')
   // LLM probe (Phase 2, stubbed)
   .option('--probe', 'Enable LLM probe mode (Phase 2)', false)
@@ -62,8 +72,9 @@ program
   .option('--ignore-robots', 'Ignore robots.txt restrictions', false)
   .option('--depth <n>', 'Crawl depth (default: 1)', (v) => parseInt(v, 10), 1)
   .option('--rate <n>', 'Requests per second (default: 1)', (v) => parseFloat(v), 1)
+  .option('--concurrency <n>', 'Maximum concurrent sitemap requests (default: 4)', (v) => parseInt(v, 10), 4)
   // Config
-  .option('--config <path>', 'Path to custom .answerlint.json config file')
+  .option('--config <path>', 'Path to custom .answerlintrc.json config file')
   // Comparison
   .option('--compare <url>', 'Compare a target URL against a competitor URL')
   .action(async (opts: Record<string, unknown>) => {
@@ -82,6 +93,7 @@ program
       ignoreRobots: Boolean(opts.ignoreRobots),
       depth: typeof opts.depth === 'number' ? opts.depth : 1,
       rate: typeof opts.rate === 'number' ? opts.rate : 1,
+      concurrency: typeof opts.concurrency === 'number' ? opts.concurrency : 4,
       config: opts.config as string | undefined,
     };
 
@@ -89,6 +101,16 @@ program
       console.error(
         'Error: Provide at least one input with --url, --file, --dir, or --sitemap'
       );
+      process.exit(3);
+    }
+
+    if (!['html', 'json', 'csv', 'sarif'].includes(options.output)) {
+      console.error('Error: --output must be html, json, csv, or sarif');
+      process.exit(3);
+    }
+
+    if (options.concurrency === undefined || !Number.isInteger(options.concurrency) || options.concurrency < 1) {
+      console.error('Error: --concurrency must be a positive integer');
       process.exit(3);
     }
 
@@ -234,7 +256,36 @@ llms
       strict: Boolean(opts.strict),
       ci: Boolean(opts.ci),
       maxChars: typeof opts.maxChars === 'number' ? opts.maxChars : 100000,
+      checkLinks: Boolean(opts.checkLinks),
     });
   });
 
-program.parse(process.argv);
+program
+  .command('lint-llms')
+  .description('Validate llms.txt structure and verify every linked URL is live')
+  .argument('[files...]', 'Manifest files (default: llms.txt and existing llms-full.txt)')
+  .option('--no-check-links', 'Skip live HTTP checks')
+  .option('--strict', 'Treat warnings, including redirects, as failures', false)
+  .option('--ci', 'Exit with code 1 when validation fails', false)
+  .option('--max-chars <n>', 'Character budget', (v) => parseInt(v, 10), 100000)
+  .option('--concurrency <n>', 'Maximum concurrent URL checks', (v) => parseInt(v, 10), 4)
+  .option('--timeout <ms>', 'Per-request timeout', (v) => parseInt(v, 10), 10000)
+  .action(async (files: string[], opts: Record<string, unknown>) => {
+    const selected = files.length > 0 ? files : ['llms.txt', ...(existsSync('llms-full.txt') ? ['llms-full.txt'] : [])];
+    for (const file of selected) {
+      await runLlmsLint({
+        file,
+        strict: Boolean(opts.strict),
+        ci: Boolean(opts.ci),
+        maxChars: opts.maxChars as number,
+        checkLinks: opts.checkLinks !== false,
+        concurrency: opts.concurrency as number,
+        timeoutMs: opts.timeout as number,
+      });
+    }
+  });
+
+program.parseAsync(process.argv).catch((error: unknown) => {
+  console.error(`Error: ${(error as Error).message}`);
+  process.exitCode = 2;
+});

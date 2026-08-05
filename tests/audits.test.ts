@@ -245,7 +245,8 @@ test('runner executes the full audit set on the sample fixture', () => {
   };
 
   const results = runAudits(page);
-  assert.equal(results.length, 12);
+  assert.equal(results.length, 13);
+  assert.ok(results.some((result) => result.id === 'entity_relationship_density'));
   assert.ok(results.some((audit) => audit.id === 'faq_schema' && audit.status === 'pass'));
   assert.ok(results.some((audit) => audit.id === 'readability' && audit.status !== 'pass'));
 });

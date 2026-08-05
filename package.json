@@ -17,7 +17,10 @@
   "files": [
     "dist",
     "templates",
-    "assets"
+    "assets",
+    "action.yml",
+    "scripts/action-comment.mjs",
+    "scripts/action-export-scores.mjs"
   ],
   "publishConfig": {
     "access": "public"
