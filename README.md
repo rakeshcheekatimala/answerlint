@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/answerlint.svg)](https://www.npmjs.com/package/answerlint)
 [![Node.js](https://img.shields.io/node/v/answerlint.svg)](https://www.npmjs.com/package/answerlint)
+[![Snyk Security](https://img.shields.io/github/actions/workflow/status/rakeshcheekatimala/answerlint/snyk.yml?branch=main&label=Snyk%20Security)](https://github.com/rakeshcheekatimala/answerlint/actions/workflows/snyk.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rakeshcheekatimala/answerlint/badge)](https://scorecard.dev/viewer/?uri=github.com/rakeshcheekatimala/answerlint)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/rakeshcheekatimala/answerlint/blob/main/LICENSE)
 
