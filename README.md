@@ -11,6 +11,10 @@ content—and what to improve when they cannot.
 
 ![How AnswerLint turns content into clearer, more citable answers](assets/how-answerlint-works.png)
 
+### Priority feature tour
+
+![Animated walkthrough of AnswerLint priority features and commands](assets/answerlint-priority-features.gif)
+
 ## How It Helps
 
 ```text
