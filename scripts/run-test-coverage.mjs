@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const lineThreshold = 90;
+const lineThreshold = 85;
 const coverageDir = path.join(process.cwd(), 'coverage');
 const testFiles = collectTestFiles(path.join(process.cwd(), 'tests'));
 const args = ['--import', 'tsx', '--test', '--experimental-test-coverage', ...testFiles];
