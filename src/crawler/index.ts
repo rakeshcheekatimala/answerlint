@@ -17,18 +17,16 @@ export async function crawl(options: AuditOptions): Promise<PageContent[]> {
 
   if (options.sitemap) {
     const urls = await fetchSitemapUrls(options.sitemap);
-    const pages: PageContent[] = [];
-    for (const url of urls) {
+    const pages = await mapWithConcurrency(urls, options.concurrency || 4, async (url) => {
       const allowed = await isAllowed(url, options.ignoreRobots);
-      if (!allowed) continue;
+      if (!allowed) return undefined;
       try {
-        const page = await fetchUrl(url, { rateMs });
-        pages.push(page);
+        return await fetchUrl(url, { rateMs });
       } catch {
-        // skip failed URLs
+        return undefined;
       }
-    }
-    return pages;
+    });
+    return pages.filter((page): page is PageContent => page !== undefined);
   }
 
   if (options.url) {
@@ -43,4 +41,24 @@ export async function crawl(options: AuditOptions): Promise<PageContent[]> {
   }
 
   throw new Error('No input provided. Use --url, --file, --dir, or --sitemap.');
+}
+
+export async function mapWithConcurrency<T, R>(
+  values: T[],
+  concurrency: number,
+  worker: (value: T, index: number) => Promise<R>
+): Promise<R[]> {
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    throw new Error('Concurrency must be a positive integer.');
+  }
+  const results = new Array<R>(values.length);
+  let next = 0;
+  const runners = Array.from({ length: Math.min(concurrency, values.length) }, async () => {
+    while (next < values.length) {
+      const index = next++;
+      results[index] = await worker(values[index], index);
+    }
+  });
+  await Promise.all(runners);
+  return results;
 }

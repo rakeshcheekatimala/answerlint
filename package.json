@@ -17,7 +17,9 @@
   "files": [
     "dist",
     "templates",
-    "assets"
+    "assets",
+    "action.yml",
+    "scripts/action-comment.mjs"
   ],
   "publishConfig": {
     "access": "public"

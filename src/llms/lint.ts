@@ -73,7 +73,36 @@ export function lintLlmsFile(
     );
   }
 
-  return lintLlmsText(fs.readFileSync(filePath, 'utf-8'), options);
+  const content = fs.readFileSync(filePath, 'utf-8');
+  return /llms-full\.txt$/i.test(filePath)
+    ? lintLlmsFullText(content, options)
+    : lintLlmsText(content, options);
+}
+
+export function lintLlmsFullText(
+  content: string,
+  options: { strict: boolean; maxChars: number }
+): LlmsLintResult {
+  const issues: LlmsIssue[] = [];
+  const lines = content.replace(/^\uFEFF/, '').split(/\r?\n/);
+  const first = lines.findIndex((line) => line.trim().length > 0);
+  if (first < 0 || !/^#\s+\S/.test(lines[first] ?? '')) {
+    issues.push({ severity: 'error', line: first >= 0 ? first + 1 : undefined, message: 'llms-full.txt must begin with one H1 title.' });
+  }
+  if (lines.filter((line) => /^#\s+/.test(line)).length !== 1) {
+    issues.push({ severity: 'error', message: 'llms-full.txt must contain exactly one H1 title.' });
+  }
+  const sections = lines.filter((line) => /^##\s+/.test(line)).length;
+  const pages = lines.filter((line) => /^###\s+/.test(line)).length;
+  if (sections === 0 || pages === 0) issues.push({ severity: 'error', message: 'llms-full.txt requires H2 sections and H3 page headings.' });
+  const sourceLines = lines.filter((line) => /^Source:\s*/.test(line));
+  if (sourceLines.length !== pages) issues.push({ severity: 'error', message: 'Every H3 page must have one Source: URL.' });
+  for (const line of sourceLines) {
+    const value = line.replace(/^Source:\s*/, '').trim();
+    if (!isValidHttpUrl(value)) issues.push({ severity: 'error', message: `Source must be an absolute http(s) URL: ${value}` });
+  }
+  if (content.length > options.maxChars) issues.push({ severity: 'warn', message: `File is ${content.length} characters, above the configured ${options.maxChars} character budget.` });
+  return buildResult(issues, options.strict);
 }
 
 function validateSections(

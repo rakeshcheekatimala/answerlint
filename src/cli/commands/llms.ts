@@ -7,6 +7,7 @@ import { buildLlmsDocument } from '../../llms/extract.js';
 import { lintLlmsFile, lintLlmsText } from '../../llms/lint.js';
 import { renderLlmsFullTxt, renderLlmsTxt } from '../../llms/render.js';
 import { LlmsGenerateOptions, LlmsIssue, LlmsLintOptions } from '../../llms/types.js';
+import { mapWithConcurrency } from '../../crawler/index.js';
 
 type ResolvedLlmsGenerateOptions = LlmsGenerateOptions & { site: string };
 
@@ -61,6 +62,14 @@ export async function runLlmsLint(options: LlmsLintOptions): Promise<void> {
     maxChars: options.maxChars,
   });
 
+  if (result.valid && options.checkLinks) {
+    const liveIssues = await validateLiveManifestLinks(options);
+    result.issues.push(...liveIssues);
+    result.errorCount += liveIssues.filter((issue) => issue.severity === 'error').length;
+    result.warningCount += liveIssues.filter((issue) => issue.severity === 'warn').length;
+    result.valid = result.errorCount === 0 && (!options.strict || result.warningCount === 0);
+  }
+
   printLintIssues(result.issues);
 
   if (result.valid) {
@@ -81,6 +90,32 @@ export async function runLlmsLint(options: LlmsLintOptions): Promise<void> {
   if (options.ci || options.strict) {
     process.exit(1);
   }
+}
+
+async function validateLiveManifestLinks(options: LlmsLintOptions): Promise<LlmsIssue[]> {
+  const content = fs.readFileSync(options.file, 'utf8');
+  const markdownLinks = [...content.matchAll(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/g)].map((match) => match[1]);
+  const sourceLinks = [...content.matchAll(/^Source:\s*(https?:\/\/\S+)\s*$/gm)].map((match) => match[1]);
+  const links = [...markdownLinks, ...sourceLinks];
+  const timeoutMs = options.timeoutMs ?? 10_000;
+  const checked = await mapWithConcurrency([...new Set(links)], options.concurrency ?? 4, async (url) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      let response = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: controller.signal });
+      if (response.status === 405 || response.status === 501) {
+        response = await fetch(url, { method: 'GET', redirect: 'follow', signal: controller.signal });
+      }
+      if (!response.ok) return { severity: 'error' as const, message: `Live URL returned HTTP ${response.status}: ${url}` };
+      if (response.redirected) return { severity: 'warn' as const, message: `Live URL redirects to ${response.url}: ${url}` };
+      return undefined;
+    } catch (error) {
+      return { severity: 'error' as const, message: `Could not reach live URL (${(error as Error).message}): ${url}` };
+    } finally {
+      clearTimeout(timeout);
+    }
+  });
+  return checked.filter((issue): issue is LlmsIssue => issue !== undefined);
 }
 
 function resolveGenerateOptions(options: LlmsGenerateOptions): ResolvedLlmsGenerateOptions {

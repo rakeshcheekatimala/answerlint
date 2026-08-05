@@ -82,7 +82,7 @@ test('runAudit writes JSON, CSV, and HTML reports successfully', async () => {
   assert.equal(fs.existsSync(jsonPath), true);
   assert.equal(fs.existsSync(csvPath), true);
   assert.equal(fs.existsSync(htmlPath), true);
-  assert.equal(JSON.parse(fs.readFileSync(jsonPath, 'utf-8')).audits.length, 12);
+  assert.equal(JSON.parse(fs.readFileSync(jsonPath, 'utf-8')).audits.length, 14);
 });
 
 test('runDiff writes JSON and HTML diff reports successfully', async () => {
@@ -221,8 +221,8 @@ test('runAudit compares target and competitor URL reports', async () => {
     assert.equal(report.type, 'comparison');
     assert.equal(report.target.url, `${server.origin}/target`);
     assert.equal(report.competitor.url, `${server.origin}/competitor`);
-    assert.equal(report.target.audits.length, 12);
-    assert.equal(report.competitor.audits.length, 12);
+    assert.equal(report.target.audits.length, 14);
+    assert.equal(report.competitor.audits.length, 14);
     assert.equal(typeof report.comparison.scores.composite.delta, 'number');
     assert.ok(Array.isArray(report.comparison.audit_deltas));
     assert.equal(typeof report.comparison.leader.label, 'string');

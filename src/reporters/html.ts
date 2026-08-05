@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import Handlebars from 'handlebars';
-import { ComparisonReport, Report, ReportOutput } from '../types/index.js';
+import { ComparisonReport, Report } from '../types/index.js';
 import { bandColor, bandLabel } from '../scoring/index.js';
 
 Handlebars.registerHelper('bandColor', (band: string) => bandColor(band as never));
@@ -113,7 +113,7 @@ function getTemplate(): HandlebarsTemplateDelegate {
   );
 }
 
-export function generateHtmlReport(report: ReportOutput, outputPath?: string): string {
+export function generateHtmlReport(report: Report | ComparisonReport, outputPath?: string): string {
   const template = getTemplate();
   const packageMetadata = readPackageMetadata();
   let comparisonReport: ComparisonReport | null = null;
@@ -143,6 +143,6 @@ export function generateHtmlReport(report: ReportOutput, outputPath?: string): s
   return html;
 }
 
-function isComparisonReport(report: ReportOutput): report is ComparisonReport {
+function isComparisonReport(report: Report | ComparisonReport): report is ComparisonReport {
   return 'type' in report && report.type === 'comparison';
 }

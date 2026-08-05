@@ -58,7 +58,7 @@ test('audit adapter creates all live scores and deterministic recommendations', 
   assert.ok(snapshot.scores.aeo >= 0 && snapshot.scores.aeo <= 100);
   assert.ok(snapshot.scores.geo >= 0 && snapshot.scores.geo <= 100);
   assert.ok(snapshot.scores.citationReadiness >= 0 && snapshot.scores.citationReadiness <= 100);
-  assert.equal(snapshot.passedChecks + snapshot.warningChecks + snapshot.failedChecks, 12);
+  assert.equal(snapshot.passedChecks + snapshot.warningChecks + snapshot.failedChecks, 13);
   assert.ok(snapshot.issues.every((issue) => issue.id.length > 0));
   assert.ok(snapshot.issues.every((issue) => issue.title.length > 0));
   assert.ok(snapshot.issues.every((issue) => issue.evidence.length > 0));
