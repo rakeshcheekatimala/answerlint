@@ -1,7 +1,8 @@
 # answerlint
 
 [![npm version](https://img.shields.io/npm/v/answerlint.svg)](https://www.npmjs.com/package/answerlint)
-[![license](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
+[![Node.js](https://img.shields.io/node/v/answerlint.svg)](https://www.npmjs.com/package/answerlint)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/rakeshcheekatimala/answerlint/blob/main/LICENSE)
 
 `answerlint` shows whether AI answer engines can understand, trust, and cite your
 content—and what to improve when they cannot.
@@ -662,7 +663,9 @@ The release workflow runs typecheck, build, and tests, then publishes to npm and
 
 ## License
 
-MIT
+[MIT](LICENSE). Please report suspected vulnerabilities through the private
+process described in the [security policy](SECURITY.md).
+
 ## Zero-token local playground
 
 Watch a Markdown document while editing it in your usual editor:
