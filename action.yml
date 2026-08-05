@@ -55,5 +55,5 @@ runs:
         MIN_AEO_SCORE: ${{ inputs.min-aeo-score }}
         MIN_GEO_SCORE: ${{ inputs.min-geo-score }}
         DIFF_EXIT: ${{ steps.diff.outputs.diff_exit }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
       run: node "${GITHUB_ACTION_PATH}/scripts/action-comment.mjs"
-
