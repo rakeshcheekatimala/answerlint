@@ -85,7 +85,7 @@ function parseCoverage(text) {
   const section = text.slice(start, end);
   const lines = section
     .split('\n')
-    .map((line) => line.trimEnd())
+    .map((line) => line.trimEnd().replace(/^ℹ\s+/, '# '))
     .filter((line) => line.startsWith('# '));
 
   const fileRows = [];

@@ -47,7 +47,12 @@ jobs:
         run: npm run lint
 
       - name: Test
+        if: ${{ matrix.node-version != '18.20.8' }}
         run: npm test
+
+      - name: Test packaged CLI on Node.js 18
+        if: ${{ matrix.node-version == '18.20.8' }}
+        run: npm run test:cli-smoke
 
   coverage-and-audit:
     name: Coverage and dependency audit
