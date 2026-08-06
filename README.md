@@ -424,52 +424,186 @@ answerlint diff \
   --fail-on-high-severity
 ```
 
-GitHub Actions sketch:
+### GitHub Actions website audit
+
+Save the following workflow as `.github/workflows/answerlint.yml`. Run it from
+the **Actions** tab and set the minimum acceptable composite score. The workflow
+fails when the audited page scores below that threshold, writes a detailed job
+summary for reviewers, and retains the JSON report for 14 days.
 
 ```yaml
-name: AI Visibility
+name: AnswerLint website audit
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: Minimum composite score required to pass
+        required: true
+        default: "40"
+        type: string
+
+permissions:
+  contents: read
 
 jobs:
   answerlint:
+    name: Audit website
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
+          package-manager-cache: false
 
-      - run: npm ci
-
-      - name: Audit baseline
+      - name: Run AnswerLint
         run: |
-          npx answerlint audit \
-            --url "https://example.com/page" \
+          npx --yes answerlint@latest audit \
+            --url "https://example.com/" \
+            --ci \
+            --threshold "${{ inputs.threshold }}" \
             --output json \
-            --output-path ./baseline-report.json
+            --output-path ./answerlint-report.json
 
-      - name: Audit preview
+      - name: Generate job summary
+        if: ${{ always() }}
+        env:
+          ANSWERLINT_THRESHOLD: ${{ inputs.threshold }}
         run: |
-          npx answerlint audit \
-            --url "$DEPLOY_PREVIEW_URL" \
-            --output json \
-            --output-path ./current-report.json
+          if [[ ! -f answerlint-report.json ]]; then
+            {
+              echo "## AnswerLint CI report"
+              echo
+              echo "AnswerLint did not produce a report."
+              echo "Check the **Run AnswerLint** step for a crawl or runtime error."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
-      - name: Compare AI visibility
-        run: |
-          npx answerlint diff \
-            --base-report ./baseline-report.json \
-            --head-report ./current-report.json \
-            --output html \
-            --output-path ./answerlint-diff-report.html \
-            --fail-on-regression
+          composite=$(jq -r '.scores.composite' answerlint-report.json)
+          aeo=$(jq -r '.scores.aeo' answerlint-report.json)
+          geo=$(jq -r '.scores.geo' answerlint-report.json)
+          band=$(jq -r '.scores.band' answerlint-report.json)
+          failed=$(jq '[.audits[] | select(.status != "pass")] | length' answerlint-report.json)
+          passed=$(jq '[.audits[] | select(.status == "pass")] | length' answerlint-report.json)
+
+          if (( composite >= ANSWERLINT_THRESHOLD )); then
+            gate="✅ Passed"
+          else
+            gate="❌ Failed — score ${composite} is below ${ANSWERLINT_THRESHOLD}"
+          fi
+
+          {
+            echo "## 🔍 AnswerLint CI report"
+            echo
+            echo "**Result:** ${gate}"
+            echo
+            echo "| Metric | Result |"
+            echo "| --- | ---: |"
+            echo "| Composite score | **${composite}/100** |"
+            echo "| Required score | **${ANSWERLINT_THRESHOLD}/100** |"
+            echo "| AEO score | ${aeo}/100 |"
+            echo "| GEO score | ${geo}/100 |"
+            echo "| Score band | ${band} |"
+            echo "| Passed checks | ${passed} |"
+            echo "| Failed checks | ${failed} |"
+            echo
+            echo "### Recommended improvements"
+            echo
+            echo "Expand each check for its evidence and suggested fix."
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          jq -r '
+            .audits[]
+            | select(.status != "pass")
+            | "<details>\n<summary><strong>" +
+              (if .recommendation.priority == "high" then "🔴 HIGH"
+               elif .recommendation.priority == "medium" then "🟠 MEDIUM"
+               else "🟡 " + ((.recommendation.priority // "review") | ascii_upcase)
+               end) +
+              " — " + .title +
+              " (potential +" +
+              ((.recommendation.score_impact // 0) | tostring) +
+              " points)</strong></summary>\n\n" +
+              "**Category:** " + (.category | ascii_upcase) + "  \n" +
+              "**Evidence:** " +
+              (.evidence // "No evidence provided.") + "\n\n" +
+              "**Recommended fix:** " +
+              (.recommendation.instruction // "No recommendation provided.") +
+              "\n\n</details>\n"
+          ' answerlint-report.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload AnswerLint report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: answerlint-report
+          path: answerlint-report.json
+          if-no-files-found: error
+          retention-days: 14
 ```
+
+Replace `https://example.com/` with the page you want to audit. GitHub-hosted
+Ubuntu runners already include `jq`, which the summary step uses to read the
+JSON report.
+
+The GitHub job summary displays:
+
+- composite, AEO, and GEO scores
+- the required threshold
+- passed and failed check counts
+- the priority of each failed check
+- evidence gathered from the page
+- recommended changes
+- potential score impact
+
+The complete JSON report is also available under **Artifacts**, even when the
+score gate fails.
+
+#### Run automatically
+
+To audit the website whenever code is pushed to `main`, replace the
+`workflow_dispatch` trigger with:
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+```
+
+An automatic run has no `inputs.threshold` value. Define a fixed threshold at
+the top level instead:
+
+```yaml
+env:
+  ANSWERLINT_THRESHOLD: "40"
+```
+
+Then update the audit command to use that environment variable:
+
+```yaml
+--threshold "$ANSWERLINT_THRESHOLD"
+```
+
+The summary step already reads `ANSWERLINT_THRESHOLD`, so remove its step-level
+`env` block that references `${{ inputs.threshold }}`.
+
+For scheduled monitoring, use the same fixed top-level threshold and replace
+the trigger with:
+
+```yaml
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+```
+
+This runs every Monday at 06:00 UTC and still permits manual runs.
 
 Exit codes:
 
