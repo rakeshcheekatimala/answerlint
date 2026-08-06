@@ -397,7 +397,84 @@ Score bands:
 
 By default, AEO contributes `50%` and GEO contributes `50%` to the composite score.
 
-## CI Examples
+## CI integration
+
+AnswerLint does not require a particular CI provider. Any runner that can run
+Node.js can use the same command, JSON report, and exit codes. Provider-specific
+configuration is only needed to schedule the job and retain the report.
+
+### Portable CI contract
+
+Use these environment variables in any CI system:
+
+| Variable | Purpose | Example |
+|---|---|---|
+| `ANSWERLINT_URL` | Public page to audit | `https://example.com/` |
+| `ANSWERLINT_THRESHOLD` | Minimum passing composite score | `40` |
+| `ANSWERLINT_REPORT_PATH` | JSON report destination | `./answerlint-report.json` |
+| `ANSWERLINT_VERSION` | Pinned npm version for reproducible builds | `1.2.1` |
+
+Run the same audit command on every platform:
+
+```bash
+npx --yes "answerlint@${ANSWERLINT_VERSION}" audit \
+  --url "$ANSWERLINT_URL" \
+  --ci \
+  --threshold "$ANSWERLINT_THRESHOLD" \
+  --output json \
+  --output-path "$ANSWERLINT_REPORT_PATH"
+```
+
+Pin `ANSWERLINT_VERSION` and update it intentionally. Using `@latest` is useful
+for local evaluation, but it can change CI results without a corresponding
+repository change.
+
+Configure the provider to publish `ANSWERLINT_REPORT_PATH` even when the audit
+step fails. This preserves the evidence and recommendations for a score-gate
+failure. The process exit code remains the portable gate:
+
+| Exit code | Meaning |
+|---|---|
+| 0 | Audit completed and passed the configured threshold |
+| 1 | Audit completed but failed the score gate |
+| 2 | Crawl or runtime error |
+| 3 | Invalid input, configuration, or diff report |
+
+### Generic shell example
+
+This example works in any Unix-like runner. The CI provider should supply the
+environment variables and handle artifact publication separately.
+
+```bash
+#!/usr/bin/env bash
+set -u
+
+: "${ANSWERLINT_URL:?Set ANSWERLINT_URL to the page to audit}"
+: "${ANSWERLINT_THRESHOLD:=40}"
+: "${ANSWERLINT_REPORT_PATH:=./answerlint-report.json}"
+: "${ANSWERLINT_VERSION:=1.2.1}"
+
+npx --yes "answerlint@${ANSWERLINT_VERSION}" audit \
+  --url "$ANSWERLINT_URL" \
+  --ci \
+  --threshold "$ANSWERLINT_THRESHOLD" \
+  --output json \
+  --output-path "$ANSWERLINT_REPORT_PATH"
+```
+
+AnswerLint prints the score summary to the job log before returning its exit
+code. The JSON artifact contains the complete scores, check counts, failure
+priorities, page evidence, recommended changes, and potential score impact.
+
+| Provider | Immediate results | Complete report |
+|---|---|---|
+| GitHub Actions | Job log and job summary | Workflow artifact |
+| GitLab CI | Job log | Job artifact |
+| Jenkins | Console output | Archived artifact |
+| CircleCI | Step output | Artifacts tab |
+| Azure Pipelines | Task log | Pipeline artifact |
+
+### Common audit commands
 
 Fail a deployment preview if the page score is below a threshold:
 
@@ -424,7 +501,7 @@ answerlint diff \
   --fail-on-high-severity
 ```
 
-### GitHub Actions website audit
+### GitHub Actions
 
 Save the following workflow as `.github/workflows/answerlint.yml`. Run it from
 the **Actions** tab and set the minimum acceptable composite score. The workflow
@@ -446,6 +523,9 @@ on:
 permissions:
   contents: read
 
+env:
+  ANSWERLINT_VERSION: "1.2.1"
+
 jobs:
   answerlint:
     name: Audit website
@@ -461,7 +541,7 @@ jobs:
 
       - name: Run AnswerLint
         run: |
-          npx --yes answerlint@latest audit \
+          npx --yes "answerlint@${ANSWERLINT_VERSION}" audit \
             --url "https://example.com/" \
             --ci \
             --threshold "${{ inputs.threshold }}" \
@@ -605,14 +685,179 @@ on:
 
 This runs every Monday at 06:00 UTC and still permits manual runs.
 
-Exit codes:
+### GitLab CI
 
-| Exit code | Meaning |
-|---|---|
-| 0 | Success |
-| 1 | CI gate failure |
-| 2 | Crawl or runtime error |
-| 3 | Invalid input, config, or diff report |
+Add this job to `.gitlab-ci.yml`. `when: always` retains the JSON report when
+the score gate fails.
+
+```yaml
+answerlint:
+  image: node:24
+  variables:
+    ANSWERLINT_URL: "https://example.com/"
+    ANSWERLINT_THRESHOLD: "40"
+    ANSWERLINT_REPORT_PATH: "answerlint-report.json"
+    ANSWERLINT_VERSION: "1.2.1"
+  script:
+    - >-
+      npx --yes "answerlint@${ANSWERLINT_VERSION}" audit
+      --url "$ANSWERLINT_URL"
+      --ci
+      --threshold "$ANSWERLINT_THRESHOLD"
+      --output json
+      --output-path "$ANSWERLINT_REPORT_PATH"
+  artifacts:
+    when: always
+    name: "answerlint-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - answerlint-report.json
+    expire_in: 14 days
+```
+
+Use `rules` or the top-level `workflow` configuration to run the job for merge
+requests, the default branch, or a pipeline schedule.
+
+### Jenkins
+
+Use a declarative `Jenkinsfile`. The `post` block runs after both passing and
+failing audits, so Jenkins archives the report without changing AnswerLint's
+exit code.
+
+```groovy
+pipeline {
+  agent {
+    docker { image 'node:24' }
+  }
+
+  environment {
+    ANSWERLINT_URL = 'https://example.com/'
+    ANSWERLINT_THRESHOLD = '40'
+    ANSWERLINT_REPORT_PATH = 'answerlint-report.json'
+    ANSWERLINT_VERSION = '1.2.1'
+  }
+
+  stages {
+    stage('Audit website') {
+      steps {
+        sh '''
+          npx --yes "answerlint@${ANSWERLINT_VERSION}" audit \
+            --url "$ANSWERLINT_URL" \
+            --ci \
+            --threshold "$ANSWERLINT_THRESHOLD" \
+            --output json \
+            --output-path "$ANSWERLINT_REPORT_PATH"
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'answerlint-report.json', allowEmptyArchive: true
+    }
+  }
+}
+```
+
+Use a Jenkins timer trigger such as `cron('H 6 * * 1')` for weekly monitoring.
+Jenkins hashes `H`, so the exact minute is distributed across available agents.
+
+### CircleCI
+
+Add this job and workflow to `.circleci/config.yml`. CircleCI artifact steps
+are processed after the command so the JSON report remains available for
+inspection.
+
+```yaml
+version: 2.1
+
+jobs:
+  answerlint:
+    docker:
+      - image: cimg/node:24.0
+    environment:
+      ANSWERLINT_URL: "https://example.com/"
+      ANSWERLINT_THRESHOLD: "40"
+      ANSWERLINT_REPORT_PATH: "answerlint-report.json"
+      ANSWERLINT_VERSION: "1.2.1"
+    steps:
+      - run:
+          name: Audit website
+          command: |
+            npx --yes "answerlint@${ANSWERLINT_VERSION}" audit \
+              --url "$ANSWERLINT_URL" \
+              --ci \
+              --threshold "$ANSWERLINT_THRESHOLD" \
+              --output json \
+              --output-path "$ANSWERLINT_REPORT_PATH"
+      - store_artifacts:
+          path: answerlint-report.json
+          destination: answerlint-report.json
+
+workflows:
+  website-audit:
+    jobs:
+      - answerlint
+```
+
+CircleCI scheduled pipelines can invoke the same `website-audit` workflow
+without changing the job itself.
+
+### Azure Pipelines
+
+Add the following job to `azure-pipelines.yml`. `condition: always()` publishes
+the report after a passing audit, score-gate failure, or runtime failure.
+
+```yaml
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  ANSWERLINT_URL: "https://example.com/"
+  ANSWERLINT_THRESHOLD: "40"
+  ANSWERLINT_REPORT_PATH: "$(Build.ArtifactStagingDirectory)/answerlint-report.json"
+  ANSWERLINT_VERSION: "1.2.1"
+
+steps:
+  - task: NodeTool@0
+    displayName: Set up Node.js
+    inputs:
+      versionSpec: "24.x"
+
+  - script: |
+      npx --yes "answerlint@${ANSWERLINT_VERSION}" audit \
+        --url "$ANSWERLINT_URL" \
+        --ci \
+        --threshold "$ANSWERLINT_THRESHOLD" \
+        --output json \
+        --output-path "$ANSWERLINT_REPORT_PATH"
+    displayName: Audit website
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish AnswerLint report
+    condition: always()
+    inputs:
+      targetPath: "$(Build.ArtifactStagingDirectory)"
+      artifact: answerlint-report
+```
+
+For scheduled monitoring, add an Azure Pipelines `schedules` trigger and keep
+the job variables unchanged.
+
+### Adapting another CI system
+
+For Buildkite, Bitbucket Pipelines, TeamCity, or another provider, apply the
+same three-part integration:
+
+1. Run the portable command with Node.js and the four environment variables.
+2. Treat AnswerLint's exit code as the build gate without translating it.
+3. Publish the JSON report using the provider's "always run" or equivalent
+   artifact mechanism.
 
 ## Command Reference
 
