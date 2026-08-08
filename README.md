@@ -526,7 +526,7 @@ answerlint diff \
   --fail-on-high-severity
 ```
 
-### GitHub Actions
+### GitHub Actions website audit
 
 Save the following workflow as `.github/workflows/answerlint.yml`. Run it from
 the **Actions** tab and set the minimum acceptable composite score. The workflow
@@ -548,9 +548,6 @@ on:
 permissions:
   contents: read
 
-env:
-  ANSWERLINT_VERSION: "1.2.1"
-
 jobs:
   answerlint:
     name: Audit website
@@ -566,7 +563,7 @@ jobs:
 
       - name: Run AnswerLint
         run: |
-          npx --yes "answerlint@${ANSWERLINT_VERSION}" audit \
+          npx --yes answerlint@latest audit \
             --url "https://example.com/" \
             --ci \
             --threshold "${{ inputs.threshold }}" \
@@ -710,82 +707,7 @@ on:
 
 This runs every Monday at 06:00 UTC and still permits manual runs.
 
-### GitLab CI
-
-Add this job to `.gitlab-ci.yml`. `when: always` retains the JSON report when
-the score gate fails.
-
-```yaml
-answerlint:
-  image: node:24
-  variables:
-    ANSWERLINT_URL: "https://example.com/"
-    ANSWERLINT_THRESHOLD: "40"
-    ANSWERLINT_REPORT_PATH: "answerlint-report.json"
-    ANSWERLINT_VERSION: "1.2.1"
-  script:
-    - >-
-      npx --yes "answerlint@${ANSWERLINT_VERSION}" audit
-      --url "$ANSWERLINT_URL"
-      --ci
-      --threshold "$ANSWERLINT_THRESHOLD"
-      --output json
-      --output-path "$ANSWERLINT_REPORT_PATH"
-  artifacts:
-    when: always
-    name: "answerlint-${CI_COMMIT_SHORT_SHA}"
-    paths:
-      - answerlint-report.json
-    expire_in: 14 days
-```
-
-Use `rules` or the top-level `workflow` configuration to run the job for merge
-requests, the default branch, or a pipeline schedule.
-
-### Jenkins
-
-Use a declarative `Jenkinsfile`. The `post` block runs after both passing and
-failing audits, so Jenkins archives the report without changing AnswerLint's
-exit code.
-
-```groovy
-pipeline {
-  agent {
-    docker { image 'node:24' }
-  }
-
-  environment {
-    ANSWERLINT_URL = 'https://example.com/'
-    ANSWERLINT_THRESHOLD = '40'
-    ANSWERLINT_REPORT_PATH = 'answerlint-report.json'
-    ANSWERLINT_VERSION = '1.2.1'
-  }
-
-  stages {
-    stage('Audit website') {
-      steps {
-        sh '''
-          npx --yes "answerlint@${ANSWERLINT_VERSION}" audit \
-            --url "$ANSWERLINT_URL" \
-            --ci \
-            --threshold "$ANSWERLINT_THRESHOLD" \
-            --output json \
-            --output-path "$ANSWERLINT_REPORT_PATH"
-        '''
-      }
-    }
-  }
-
-  post {
-    always {
-      archiveArtifacts artifacts: 'answerlint-report.json', allowEmptyArchive: true
-    }
-  }
-}
-```
-
-Use a Jenkins timer trigger such as `cron('H 6 * * 1')` for weekly monitoring.
-Jenkins hashes `H`, so the exact minute is distributed across available agents.
+Exit codes:
 
 ### CircleCI
 
