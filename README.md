@@ -206,6 +206,31 @@ Install globally:
 npm install -g answerlint
 ```
 
+### Dependency security for contributors
+
+Running `npm install` sets up Husky automatically. The pre-commit hook runs the
+TypeScript type-check, and the pre-push hook scans `package-lock.json` with
+OSV-Scanner and GuardDog and verifies npm registry signatures. Install
+[OSV-Scanner](https://google.github.io/osv-scanner/installation/) and
+[uv](https://docs.astral.sh/uv/getting-started/installation/) before pushing.
+
+Add dependencies through the safe installer instead of invoking `npm install`
+directly:
+
+```bash
+npm run deps:add -- package-name
+npm run deps:add -- --save-dev package-name
+```
+
+The safe installer first installs with lifecycle scripts disabled. It then runs
+OSV-Scanner, GuardDog, and npm signature verification before rebuilding packages
+and allowing lifecycle scripts. If any check fails, it restores `package.json`,
+`package-lock.json`, and the previous dependency tree. Local hooks can be
+bypassed, so the same dependency checks remain mandatory in GitHub Actions.
+Time-bounded OSV exceptions live in `osv-scanner.toml`; each exception is scoped
+to an exact development package version and must be removed or renewed before
+its expiry date.
+
 Audit one live page:
 
 ```bash

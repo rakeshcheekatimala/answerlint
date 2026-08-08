@@ -31,13 +31,18 @@
     "benchmark": "node --import tsx scripts/benchmark.ts",
     "dev": "tsx src/cli/index.ts",
     "lint": "tsc --noEmit",
+    "prepare": "husky",
     "release": "semantic-release",
     "release:dry-run": "npx -p node@v24 -c \"semantic-release --dry-run --no-ci\"",
     "test": "npm run test:cli-smoke && npm run build:test && node --import tsx --test $(find tests -name '*.test.ts' -print)",
     "test:coverage": "npm run test:cli-smoke && npm run build:test && node ./scripts/run-test-coverage.mjs",
     "test:cli-smoke": "npm run build && node dist/index.js overview && node dist/index.js tui --help && npm run dev -- overview",
     "size:bundle": "node -e \"console.log(require('fs').statSync('dist/index.js').size + ' bytes')\"",
-    "size:pack": "npm pack --dry-run"
+    "size:pack": "npm pack --dry-run",
+    "security:osv": "osv-scanner scan --lockfile=package-lock.json --config=osv-scanner.toml",
+    "security:guarddog": "uvx --from guarddog==2.9.0 guarddog npm verify package-lock.json",
+    "security:dependencies": "npm run security:osv && npm run security:guarddog && npm audit signatures",
+    "deps:add": "node scripts/safe-npm-install.mjs"
   },
   "keywords": [
     "aeo",
@@ -66,6 +71,7 @@
     "@types/cheerio": "^0.22.35",
     "@types/handlebars": "^4.1.0",
     "@types/node": "^20.14.0",
+    "husky": "^9.1.7",
     "semantic-release": "^25.0.0",
     "tsup": "^8.1.0",
     "tsx": "^4.15.7",

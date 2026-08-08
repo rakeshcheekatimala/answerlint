@@ -1,0 +1,48 @@
+# Temporary, narrow exceptions for development-only transitive dependencies.
+# Remove each override as soon as semantic-release/npm or tsup publishes a
+# compatible dependency graph containing the corresponding fixed version.
+
+[[PackageOverrides]]
+name = "brace-expansion"
+version = "5.0.7"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2026-09-08
+reason = "Bundled by npm through semantic-release; no compatible patched upstream npm release is currently locked."
+
+[[PackageOverrides]]
+name = "esbuild"
+version = "0.27.7"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2026-09-08
+reason = "Required by the latest compatible tsup/tsx graph; the advisory affects the Windows development server."
+
+[[PackageOverrides]]
+name = "ip-address"
+version = "10.2.0"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2026-09-08
+reason = "Bundled by npm through semantic-release; not used by answerlint runtime code."
+
+[[PackageOverrides]]
+name = "tar"
+version = "7.5.19"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2026-09-08
+reason = "Bundled by npm through semantic-release; no non-breaking remediation is currently available."
+
+[[PackageOverrides]]
+name = "undici"
+version = "6.27.0"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2026-09-08
+reason = "Bundled by npm through semantic-release; answerlint runtime resolves a patched undici version."
