@@ -70,7 +70,7 @@
   "devDependencies": {
     "@types/cheerio": "^0.22.35",
     "@types/handlebars": "^4.1.0",
-    "@types/node": "^20.14.0",
+    "@types/node": "^26.1.2",
     "husky": "^9.1.7",
     "semantic-release": "^25.0.0",
     "tsup": "^8.1.0",
